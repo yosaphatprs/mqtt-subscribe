@@ -28,8 +28,7 @@ def on_message(client, userdata, msg):
         logging.error(f"Failed to decode JSON: {e}")
 
 def save_to_file(data):
-    # Create a filename with the current timestamp
-    filename = datetime.now().strftime("gyro_data_%Y%m%d%H%M%S.json")
+    filename = "gyro_data.json"
     with open(filename, 'w') as f:
         json.dump(data, f, indent=4)
     print(f"Data saved to {filename}")
