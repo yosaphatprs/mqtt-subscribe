@@ -40,9 +40,13 @@ def upsample_data(data, target_length):
     target_indices = np.linspace(0, original_length - 1, target_length)
     
     upsampled_data = []
+
+    # Interpolate the millis field separately to ensure it remains an integer
+    millis_values = [point['millis'] for point in data]
+    interpolated_millis = np.round(np.interp(target_indices, original_indices, millis_values)).astype(int)
     
-    # Interpolate each field
-    for field in ['millis', 'gyX', 'gyY', 'gyZ', 'temp']:
+    # Interpolate each field except millis
+    for field in ['gyX', 'gyY', 'gyZ', 'temp']:
         field_values = [point[field] for point in data]
         interpolated_values = np.interp(target_indices, original_indices, field_values)
         
@@ -51,9 +55,10 @@ def upsample_data(data, target_length):
             if len(upsampled_data) <= i:
                 upsampled_data.append({})
             upsampled_data[i][field] = value
-    
-    # Maintain ID and any other fields that are not interpolated
-    for point in upsampled_data:
+
+    # Assign the interpolated millis values and maintain ID and any other fields that are not interpolated
+    for i, point in enumerate(upsampled_data):
+        point['millis'] = interpolated_millis[i]
         point['ID'] = data[0]['ID']
     
     logging.info(f"Upsampled data from {original_length} to {target_length} points")
