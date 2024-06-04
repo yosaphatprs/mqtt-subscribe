@@ -1,9 +1,10 @@
 import json
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import load_model
 import logging
 import os
+os.environ['TF_TENSORRT_DISABLED'] = '1'
+import tensorflow as tf
+from tensorflow.keras.models import load_model
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
