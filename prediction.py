@@ -17,10 +17,15 @@ model = load_model('model.h5')
 
 # Define the handler to process file changes
 class JsonFileHandler(FileSystemEventHandler):
+    def __init__(self):
+        self.processing = False
+
     def on_modified(self, event):
-        if event.src_path == "gyro_data.json":
+        if event.src_path == "gyro_data.json" and not self.processing:
+            self.processing = True
             logging.info(f"{event.src_path} has been modified")
             process_json_data(event.src_path)
+            self.processing = False
 
 def process_json_data(file_path):
     with open(file_path, 'r') as f:
