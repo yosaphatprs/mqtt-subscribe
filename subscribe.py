@@ -40,13 +40,9 @@ def upsample_data(data, target_length):
     target_indices = np.linspace(0, original_length - 1, target_length)
     
     upsampled_data = []
-
-    # Interpolate the millis field separately to ensure it remains an integer
-    millis_values = [point['millis'] for point in data]
-    interpolated_millis = np.round(np.interp(target_indices, original_indices, millis_values)).astype(int)
     
-    # Interpolate each field except millis
-    for field in ['gyX', 'gyY', 'gyZ', 'temp']:
+    # Interpolate each field
+    for field in ['millis', 'gyX', 'gyY', 'gyZ', 'temp']:
         field_values = [point[field] for point in data]
         interpolated_values = np.interp(target_indices, original_indices, field_values)
         
@@ -54,11 +50,13 @@ def upsample_data(data, target_length):
         for i, value in enumerate(interpolated_values):
             if len(upsampled_data) <= i:
                 upsampled_data.append({})
-            upsampled_data[i][field] = value
-
-    # Assign the interpolated millis values and maintain ID and any other fields that are not interpolated
-    for i, point in enumerate(upsampled_data):
-        point['millis'] = interpolated_millis[i]
+            if field == 'millis':
+                upsampled_data[i][field] = int(value)  # Ensure millis is an integer
+            else:
+                upsampled_data[i][field] = value
+    
+    # Maintain ID and any other fields that are not interpolated
+    for point in upsampled_data:
         point['ID'] = data[0]['ID']
     
     logging.info(f"Upsampled data from {original_length} to {target_length} points")
@@ -66,6 +64,12 @@ def upsample_data(data, target_length):
     return upsampled_data
 
 def save_to_file(data):
+    # Convert int64 to int to ensure JSON serialization
+    for item in data:
+        for key in item:
+            if isinstance(item[key], np.int64):
+                item[key] = int(item[key])
+    
     filename = "gyro_data.json"
     with open(filename, 'w') as f:
         json.dump(data, f, indent=4)
