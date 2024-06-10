@@ -25,15 +25,15 @@ def on_message(client, userdata, msg):
         # Parse the JSON data
         data = json.loads(msg.payload.decode('utf-8'))
         
-        # Ensure data is a list
-        if isinstance(data, list):
+        # Ensure data is a dictionary (JSON object)
+        if isinstance(data, dict):
             # Print the received data
             print(json.dumps(data, indent=4))
             
             # Save the data to a JSON file
             save_to_file(data)
         else:
-            logging.error("Received data is not a list")
+            logging.error("Received data is not a JSON object")
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
     except Exception as e:
@@ -44,8 +44,8 @@ def save_to_file(data):
     try:
         with open(filename, 'w') as f:
             json.dump(data, f, indent=4)
-        print(f"Data saved to {filename} with {len(data)} records")
-        logging.info(f"Data saved to {filename} with {len(data)} records")
+        print(f"Data saved to {filename}")
+        logging.info(f"Data saved to {filename}")
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
 
