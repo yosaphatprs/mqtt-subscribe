@@ -8,10 +8,24 @@ from datetime import datetime
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(message)s')
 
-# Directory to save the JSON files
-SAVE_DIR = "received_data"
-if not os.path.exists(SAVE_DIR):
-    os.makedirs(SAVE_DIR)
+# Path to save the JSON file
+SAVE_FILE = "received_data/gyro_data.json"
+
+# Ensure the directory exists
+os.makedirs(os.path.dirname(SAVE_FILE), exist_ok=True)
+
+# Maximum number of data points to store
+MAX_DATA_POINTS = 1200
+
+# Load existing data if the file exists
+if os.path.exists(SAVE_FILE):
+    with open(SAVE_FILE, 'r') as f:
+        try:
+            data_list = json.load(f)
+        except json.JSONDecodeError:
+            data_list = []
+else:
+    data_list = []
 
 # Callback when the client connects to the broker
 def on_connect(client, userdata, flags, rc):
@@ -30,8 +44,15 @@ def on_message(client, userdata, msg):
             # Print the received data
             print(json.dumps(data, indent=4))
             
-            # Save the data to a JSON file
-            save_to_file(data)
+            # Add the new data point to the list
+            data_list.append(data)
+            
+            # Ensure the list does not exceed MAX_DATA_POINTS
+            if len(data_list) > MAX_DATA_POINTS:
+                data_list.pop(0)
+            
+            # Save the updated data list to the JSON file
+            save_to_file(data_list)
         else:
             logging.error("Received data is not a JSON object")
     except json.JSONDecodeError as e:
@@ -40,12 +61,11 @@ def on_message(client, userdata, msg):
         logging.error(f"Unexpected error: {e}")
 
 def save_to_file(data):
-    filename = os.path.join(SAVE_DIR, f"gyro_data_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.json")
     try:
-        with open(filename, 'w') as f:
+        with open(SAVE_FILE, 'w') as f:
             json.dump(data, f, indent=4)
-        print(f"Data saved to {filename}")
-        logging.info(f"Data saved to {filename}")
+        print(f"Data saved to {SAVE_FILE} with {len(data)} records")
+        logging.info(f"Data saved to {SAVE_FILE} with {len(data)} records")
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
 
