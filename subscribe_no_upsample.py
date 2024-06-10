@@ -1,8 +1,8 @@
 import paho.mqtt.client as mqtt
 import json
-from datetime import datetime
 import logging
 import os
+from datetime import datetime
 
 # Setup logging
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
@@ -23,28 +23,31 @@ def on_message(client, userdata, msg):
     logging.info(f"Message received on topic {msg.topic}")
     try:
         # Parse the JSON data
-        data = json.loads(msg.payload.decode())
+        data = json.loads(msg.payload.decode('utf-8'))
         
-        # Print the received data
-        print(json.dumps(data, indent=4))
-        
-        # Save the data to a JSON file
-        save_to_file(data)
+        # Ensure data is a list
+        if isinstance(data, list):
+            # Print the received data
+            print(json.dumps(data, indent=4))
+            
+            # Save the data to a JSON file
+            save_to_file(data)
+        else:
+            logging.error("Received data is not a list")
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
 
 def save_to_file(data):
-    # Convert int64 to int to ensure JSON serialization
-    for item in data:
-        for key in item:
-            if isinstance(item[key], int):
-                item[key] = int(item[key])
-    
     filename = os.path.join(SAVE_DIR, f"gyro_data_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.json")
-    with open(filename, 'w') as f:
-        json.dump(data, f, indent=4)
-    print(f"Data saved to {filename} with {len(data)} records")
-    logging.info(f"Data saved to {filename} with {len(data)} records")
+    try:
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=4)
+        print(f"Data saved to {filename} with {len(data)} records")
+        logging.info(f"Data saved to {filename} with {len(data)} records")
+    except Exception as e:
+        logging.error(f"Failed to save data to file: {e}")
 
 # Create an MQTT client instance
 client = mqtt.Client()
