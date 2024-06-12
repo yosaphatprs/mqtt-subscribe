@@ -16,6 +16,15 @@ model = load_model('allnewfall-detect-model.h5')
 # Define the interval for predictions (in seconds)
 PREDICTION_INTERVAL = 1
 
+# Label mapping
+label_mapping = {
+    0: "(1) Berdiri 30 Detik",
+    1: "(06) Jalan Mutar 4m",
+    2: "(20) Jatuh Depan Coba Duduk",
+    3: "(21) Jatuh belakang coba duduk",
+    4: "(22) Jatuh samping pas coba duduk"
+}
+
 # Function to process the JSON data and make predictions
 def process_json_data():
     try:
@@ -25,8 +34,9 @@ def process_json_data():
         if len(data) >= 25:  # Ensure we have at least 25 data points
             logging.info("Data has at least 25 points. Making prediction.")
             latest_data = data[-25:]  # Get the last 25 data points
-            prediction = make_prediction(latest_data)
-            logging.info(f"Prediction: {prediction}")
+            prediction, predicted_label = make_prediction(latest_data)
+            logging.info(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
+            print(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
     except Exception as e:
         logging.error(f"Error processing JSON data: {e}")
 
@@ -45,7 +55,9 @@ def make_prediction(data):
 
     # Make prediction
     prediction = model.predict(input_data)
-    return prediction
+    predicted_class_index = np.argmax(prediction, axis=1)[0]
+    predicted_label = label_mapping[predicted_class_index]
+    return prediction, predicted_label
 
 # Start the first prediction
 Timer(PREDICTION_INTERVAL, process_json_data).start()
