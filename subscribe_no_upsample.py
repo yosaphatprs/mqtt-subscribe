@@ -9,10 +9,7 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(message)s')
 
 # Path to save the JSON file
-SAVE_FILE = "gyro_data.json"
-
-# Ensure the directory exists
-os.makedirs(os.path.dirname(SAVE_FILE), exist_ok=True)
+SAVE_FILE = "gyro_data.json"  # Assuming current directory is fine
 
 # Maximum number of data points to store
 MAX_DATA_POINTS = 1200
