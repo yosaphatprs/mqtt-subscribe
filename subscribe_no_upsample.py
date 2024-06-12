@@ -9,7 +9,7 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(message)s')
 
 # Path to save the JSON file
-SAVE_FILE = "/gyro_data.json"
+SAVE_FILE = "gyro_data.json"
 
 # Ensure the directory exists
 os.makedirs(os.path.dirname(SAVE_FILE), exist_ok=True)
@@ -68,6 +68,7 @@ def save_to_file(data):
         logging.info(f"Data saved to {SAVE_FILE} with {len(data)} records")
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
+        print(f"Failed to save data to file: {e}")
 
 # Create an MQTT client instance
 client = mqtt.Client()
