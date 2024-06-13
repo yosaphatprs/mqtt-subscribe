@@ -17,6 +17,7 @@ os.makedirs(DATASET_DIR, exist_ok=True)
 gyro_x = []
 gyro_y = []
 gyro_z = []
+ids = []  # List to hold IDs
 current_label = None
 dataset_index = {}  # Dictionary to store dataset index for each label
 
@@ -30,15 +31,14 @@ label_mapping = {
 }
 
 # Function to save data to a file
-# Function to save data to a file
-def save_to_file(gyro_x, gyro_y, gyro_z, label):
+def save_to_file(gyro_x, gyro_y, gyro_z, ids, label):
     global dataset_index
     filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{int(time.time())}.json")
     try:
         data = []
         for i in range(len(gyro_x)):
             data_point = {
-                'ID': str(i + 1),  # Using index as ID
+                'ID': ids[i],  # Use the ID from the MQTT message
                 'gyX': gyro_x[i],
                 'gyY': gyro_y[i],
                 'gyZ': gyro_z[i],
@@ -60,6 +60,7 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label):
         gyro_x.clear()
         gyro_y.clear()
         gyro_z.clear()
+        ids.clear()
 
         # Increment dataset index for this label
         dataset_index[label] += 1
@@ -73,7 +74,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("fall-detection/sensor/gyro")
 
 def on_message(client, userdata, msg):
-    global gyro_x, gyro_y, gyro_z, current_label
+    global gyro_x, gyro_y, gyro_z, ids, current_label, start_time
     
     if current_label is None:
         logging.warning("Received message but no label is selected yet. Ignoring.")
@@ -82,27 +83,17 @@ def on_message(client, userdata, msg):
     logging.info(f"Message received on topic {msg.topic}")
     try:
         data = json.loads(msg.payload.decode('utf-8'))
-        if 'gyX' in data and 'gyY' in data and 'gyZ' in data and 'temp' in data:
-            data_point = {
-                'ID': str(len(gyro_x) + 1),  # Generate a unique ID for each data point
-                'gyX': data['gyX'],
-                'gyY': data['gyY'],
-                'gyZ': data['gyZ'],
-                'temp': data['temp']
-            }
+        if 'gyX' in data and 'gyY' in data and 'gyZ' in data and 'ID' in data:
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
+            ids.append(data['ID'])  # Collect the ID from the MQTT message
             
             # Check if time limit (12 seconds) is reached
             if time.time() - start_time >= 12:
                 logging.info(f"Time limit reached for label {current_label}")
                 # Save collected data
-                save_to_file(gyro_x, gyro_y, gyro_z, current_label)
-                # Reset data lists for the next collection
-                gyro_x.clear()
-                gyro_y.clear()
-                gyro_z.clear()
+                save_to_file(gyro_x, gyro_y, gyro_z, ids, current_label)
                 
                 # Prompt for new label input
                 new_label_input()
@@ -114,7 +105,7 @@ def on_message(client, userdata, msg):
 
 # Function to prompt for new label input
 def new_label_input():
-    global current_label
+    global current_label, start_time
     while True:
         user_input = input("Enter the label index to start collecting data (or 'q' to quit): ")
         
@@ -127,6 +118,8 @@ def new_label_input():
             current_label = int(user_input)
             dataset_index[current_label] = dataset_index.get(current_label, 0) + 1  # Increment dataset index for this label
             print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 12 seconds.")
+            
+            start_time = time.time()  # Start time for 12 seconds collection
             break
         else:
             print("Invalid input. Please enter a valid label index or 'q' to quit.")
@@ -142,18 +135,19 @@ def main():
         if current_label is None:
             break
         
-        start_time = time.time()  # Start time for 12 seconds collection
         while time.time() - start_time < 12:
             pass  # Wait until 12 seconds are reached
         
-        print(f"Data collection ended for label: {label_mapping[current_label]}")
-        print(f"Data collected: {len(gyro_x)} points")
-        # Save collected data
-        save_to_file(gyro_x, gyro_y, gyro_z, current_label)
-        # Reset data lists for the next collection
-        gyro_x.clear()
-        gyro_y.clear()
-        gyro_z.clear()
+        if current_label is not None:
+            print(f"Data collection ended for label: {label_mapping[current_label]}")
+            print(f"Data collected: {len(gyro_x)} points")
+            # Save collected data
+            save_to_file(gyro_x, gyro_y, gyro_z, ids, current_label)
+            # Reset data lists for the next collection
+            gyro_x.clear()
+            gyro_y.clear()
+            gyro_z.clear()
+            ids.clear()
 
 if __name__ == "__main__":
     # Setup MQTT client
