@@ -73,6 +73,9 @@ def on_message(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode('utf-8'))
         if 'gyX' in data and 'gyY' in data and 'gyZ' in data:
+            # Explicitly declare as global to modify these variables
+            global gyro_x, gyro_y, gyro_z
+            
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
