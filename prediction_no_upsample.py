@@ -31,9 +31,9 @@ def process_json_data():
         with open('gyro_data.json', 'r') as f:
             data = json.load(f)
 
-        if len(data) >= 25:  # Ensure we have at least 25 data points
+        if len(data) >= 120:  # Ensure we have at least 120 data points
             logging.info("Data has at least 25 points. Making prediction.")
-            latest_data = data[-25:]  # Get the last 25 data points
+            latest_data = data[-120:]  # Get the last 120 data points
             prediction, predicted_label = make_prediction(latest_data)
             logging.info(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
             print(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
