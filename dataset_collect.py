@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from scipy.interpolate import interp1d
 import paho.mqtt.client as mqtt
+import numpy as np
 
 # Setup logging
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
