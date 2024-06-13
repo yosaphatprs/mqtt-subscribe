@@ -1,5 +1,4 @@
 import json
-import numpy as np
 import logging
 import os
 import time
@@ -15,6 +14,13 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
 DATASET_DIR = "datasets"
 os.makedirs(DATASET_DIR, exist_ok=True)
 
+# Global variables to hold collected data
+gyro_x = []
+gyro_y = []
+gyro_z = []
+current_label = None
+dataset_count = 0
+
 # Label mapping
 label_mapping = {
     0: "(1) Berdiri 30 Detik",
@@ -23,20 +29,6 @@ label_mapping = {
     3: "(21) Jatuh belakang coba duduk",
     4: "(22) Jatuh samping pas coba duduk"
 }
-
-# Global variables to hold collected data
-gyro_x = []
-gyro_y = []
-gyro_z = []
-current_label = None
-dataset_count = 0
-
-# Function to upsample data
-def upsample_data(data, target_rate=100, original_rate=20):
-    x = np.arange(0, len(data))
-    f = interp1d(x, data, kind='linear')
-    x_new = np.linspace(0, len(data) - 1, int(len(data) * (target_rate / original_rate)))
-    return f(x_new).tolist()
 
 # Function to save data to a file
 def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
@@ -63,13 +55,20 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
 
+# Function to upsample data
+def upsample_data(data, target_rate=100, original_rate=20):
+    x = np.arange(0, len(data))
+    f = interp1d(x, data, kind='linear')
+    x_new = np.linspace(0, len(data) - 1, int(len(data) * (target_rate / original_rate)))
+    return f(x_new).tolist()
+
 # MQTT callback functions
 def on_connect(client, userdata, flags, rc):
     logging.info(f"Connected with result code {rc}")
     client.subscribe("fall-detection/sensor/gyro")
 
 def on_message(client, userdata, msg):
-    global gyro_x, gyro_y, gyro_z
+    global gyro_x, gyro_y, gyro_z, current_label, dataset_count
     logging.info(f"Message received on topic {msg.topic}")
     try:
         data = json.loads(msg.payload.decode('utf-8'))
@@ -77,12 +76,14 @@ def on_message(client, userdata, msg):
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
+
+            # No need to check length or save here, handle this logic outside
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
 
-# Main data collection loop
+# Main function to start data collection
 def main():
     global current_label, dataset_count
     print("Press 'Enter' to start data collection for each label and 's' to stop.")
@@ -100,9 +101,9 @@ def main():
             while True:
                 stop_input = input("Press 's' to stop collection: ")
                 if stop_input.lower() == 's':
-                    dataset_count += 1
-                    save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
                     print(f"Data collection ended for label: {label_mapping[current_label]}")
+                    save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
+                    # Reset the lists after saving
                     gyro_x, gyro_y, gyro_z = [], [], []
                     break
         else:
