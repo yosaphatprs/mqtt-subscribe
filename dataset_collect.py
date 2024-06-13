@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import time
 from datetime import datetime
 from scipy.interpolate import interp1d
 import paho.mqtt.client as mqtt
@@ -33,12 +32,11 @@ label_mapping = {
 }
 
 # Function to save data to a file
-# Function to save data to a file
 def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
     global data_counter
     upsampled_data = []
 
-    # Upsample each list (gyro_x, gyro_y, gyro_z) with custom ratio
+    # Upsample each list (gyro_x, gyro_y, gyro_z)
     for data_list in [gyro_x, gyro_y, gyro_z]:
         if len(data_list) >= 20:
             x = np.linspace(0, 1, len(data_list))
@@ -119,6 +117,7 @@ def main():
                 stop_input = input("Press 's' to stop collection: ")
                 if stop_input.lower() == 's':
                     print(f"Data collection ended for label: {label_mapping[current_label]}")
+                    # Save and upsample collected data
                     save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
                     # Reset the lists after saving
                     gyro_x, gyro_y, gyro_z = [], [], []
