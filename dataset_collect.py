@@ -125,7 +125,7 @@ def new_label_input():
 
         if user_input.isdigit() and int(user_input) in label_mapping:
             current_label = int(user_input)
-            print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 12 seconds.")
+            print(f"Collecting data for label: {label_mapping[current_label]}.")
             
             start_time = time.time()  # Start time for 12 seconds collection
             break
