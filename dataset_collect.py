@@ -88,11 +88,12 @@ def on_message(client, userdata, msg):
         payload = msg.payload.decode('utf-8')  # Convert bytes to string
         parts = payload.split(',')
         
-        if len(parts) == 4:
+        if len(parts) == 5:  # Assuming 5 parts including device ID and gyro values
             device_id = parts[0]
             gyX = float(parts[1])
             gyY = float(parts[2])
             gyZ = float(parts[3])
+            label = int(parts[4])  # Assuming label is the 5th part
             
             gyro_x.append(gyX)
             gyro_y.append(gyY)
