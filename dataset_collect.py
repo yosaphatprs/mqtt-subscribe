@@ -89,6 +89,16 @@ def on_message(client, userdata, msg):
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
+            
+            # Check if data collection limit (240 points) is reached
+            if len(gyro_x) >= 240:
+                logging.info(f"Data collection completed for label {current_label}")
+                # Save collected data
+                save_to_file(gyro_x, gyro_y, gyro_z, current_label)
+                # Reset data lists for the next collection
+                gyro_x.clear()
+                gyro_y.clear()
+                gyro_z.clear()
 
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
@@ -97,7 +107,7 @@ def on_message(client, userdata, msg):
 
 # Main function to start data collection
 def main():
-    global current_label, dataset_index, gyro_x, gyro_y, gyro_z
+    global current_label, dataset_index
     
     print("Press 'Enter' to start data collection for each label and 'q' to quit.")
     while True:
@@ -112,16 +122,17 @@ def main():
             dataset_index[current_label] = 0  # Initialize dataset index for this label
             print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 240 points.")
             
-            data_counter = 0
-            while data_counter < 240:
-                pass  # Collect data until 240 points are collected
+            while len(gyro_x) < 240:
+                pass  # Wait until 240 points are collected
             
             print(f"Data collection ended for label: {label_mapping[current_label]}")
             print(f"Data collected: {len(gyro_x)} points")
             # Save collected data
             save_to_file(gyro_x, gyro_y, gyro_z, current_label)
             # Reset data lists for the next collection
-            gyro_x, gyro_y, gyro_z = [], [], []
+            gyro_x.clear()
+            gyro_y.clear()
+            gyro_z.clear()
 
         else:
             print("Invalid input. Please enter a valid label index or 'q' to quit.")
