@@ -68,19 +68,14 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("fall-detection/sensor/gyro")
 
 def on_message(client, userdata, msg):
-    global gyro_x, gyro_y, gyro_z, current_label, dataset_count
+    global gyro_x, gyro_y, gyro_z
     logging.info(f"Message received on topic {msg.topic}")
     try:
         data = json.loads(msg.payload.decode('utf-8'))
         if 'gyX' in data and 'gyY' in data and 'gyZ' in data:
-            # Explicitly declare as global to modify these variables
-            global gyro_x, gyro_y, gyro_z
-            
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
-
-            # No need to check length or save here, handle this logic outside
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
     except Exception as e:
@@ -88,7 +83,7 @@ def on_message(client, userdata, msg):
 
 # Main function to start data collection
 def main():
-    global current_label, dataset_count
+    global current_label, dataset_count, gyro_x, gyro_y, gyro_z
     print("Press 'Enter' to start data collection for each label and 's' to stop.")
     while True:
         user_input = input("Enter the label index to start collecting data (or 'q' to quit): ")
@@ -108,6 +103,7 @@ def main():
                     save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
                     # Reset the lists after saving
                     gyro_x, gyro_y, gyro_z = [], [], []
+                    dataset_count += 1  # Increment dataset count
                     break
         else:
             print("Invalid input. Please enter a valid label index or 'q' to quit.")
