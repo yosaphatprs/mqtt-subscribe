@@ -24,9 +24,6 @@ label_mapping = {
     4: "(22) Jatuh samping pas coba duduk"
 }
 
-# Maximum number of data points to store before upsampling (20 Hz for 6 seconds = 120 data points)
-MAX_DATA_POINTS = 120
-
 # Global variables to hold collected data
 gyro_x = []
 gyro_y = []
@@ -72,7 +69,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("fall-detection/sensor/gyro")
 
 def on_message(client, userdata, msg):
-    global gyro_x, gyro_y, gyro_z, current_label, dataset_count
+    global gyro_x, gyro_y, gyro_z
     logging.info(f"Message received on topic {msg.topic}")
     try:
         data = json.loads(msg.payload.decode('utf-8'))
@@ -80,15 +77,6 @@ def on_message(client, userdata, msg):
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
-
-            if len(gyro_x) >= MAX_DATA_POINTS:
-                logging.info(f"Collected {MAX_DATA_POINTS} data points for label: {current_label}")
-                dataset_count += 1
-                save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
-
-                # Clear the data lists for the next dataset
-                gyro_x, gyro_y, gyro_z = [], [], []
-
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
     except Exception as e:
@@ -112,7 +100,10 @@ def main():
             while True:
                 stop_input = input("Press 's' to stop collection: ")
                 if stop_input.lower() == 's':
+                    dataset_count += 1
+                    save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
                     print(f"Data collection ended for label: {label_mapping[current_label]}")
+                    gyro_x, gyro_y, gyro_z = [], [], []
                     break
         else:
             print("Invalid input. Please enter a valid label index or 'q' to quit.")
