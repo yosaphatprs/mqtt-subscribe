@@ -20,6 +20,7 @@ gyro_z = []
 current_label = None
 dataset_count = 0
 data_counter = 0  # Counter for collected data points
+dataset_index = {}  # Dictionary to store dataset index for each label
 
 # Label mapping
 label_mapping = {
@@ -31,9 +32,9 @@ label_mapping = {
 }
 
 # Function to save data to a file
-def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
-    global data_counter
-    filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index}.json")
+def save_to_file(gyro_x, gyro_y, gyro_z, label):
+    global dataset_index
+    filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index[label]}.json")
     try:
         data = {
             'gyro_x': gyro_x,
@@ -53,6 +54,9 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
         
         # Reset data counter after printing/logging
         data_counter = 0
+        
+        # Increment dataset index for this label
+        dataset_index[label] += 1
         
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
@@ -82,7 +86,7 @@ def on_message(client, userdata, msg):
 
 # Main function to start data collection
 def main():
-    global current_label, dataset_count, gyro_x, gyro_y, gyro_z
+    global current_label, dataset_count, gyro_x, gyro_y, gyro_z, dataset_index
     print("Press 'Enter' to start data collection for each label and 'q' to quit.")
     while True:
         user_input = input("Enter the label index to start collecting data (or 'q' to quit): ")
@@ -93,6 +97,7 @@ def main():
         if user_input.isdigit() and int(user_input) in label_mapping:
             current_label = int(user_input)
             dataset_count = 0
+            dataset_index[current_label] = 0  # Initialize dataset index for this label
             print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 12 seconds.")
             
             start_time = time.time()
@@ -102,7 +107,7 @@ def main():
             print(f"Data collection ended for label: {label_mapping[current_label]}")
             print(f"Data collected: {data_counter} points")
             # Save collected data
-            save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
+            save_to_file(gyro_x, gyro_y, gyro_z, current_label)
             # Reset data lists and counters
             gyro_x, gyro_y, gyro_z = [], [], []
             dataset_count += 1  # Increment dataset count
