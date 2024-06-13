@@ -90,20 +90,42 @@ def on_message(client, userdata, msg):
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
             
-            # Check if data collection limit (240 points) is reached
-            if len(gyro_x) >= 240:
-                logging.info(f"Data collection completed for label {current_label}")
+            # Check if time limit (12 seconds) is reached
+            if time.time() - start_time >= 12:
+                logging.info(f"Time limit reached for label {current_label}")
                 # Save collected data
                 save_to_file(gyro_x, gyro_y, gyro_z, current_label)
                 # Reset data lists for the next collection
                 gyro_x.clear()
                 gyro_y.clear()
                 gyro_z.clear()
+                
+                # Prompt for new label input
+                new_label_input()
 
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
+
+# Function to prompt for new label input
+def new_label_input():
+    global current_label
+    while True:
+        user_input = input("Enter the label index to start collecting data (or 'q' to quit): ")
+        
+        if user_input.lower() == 'q':
+            print("Exiting data collection...")
+            current_label = None
+            break
+
+        if user_input.isdigit() and int(user_input) in label_mapping:
+            current_label = int(user_input)
+            dataset_index[current_label] = dataset_index.get(current_label, 0) + 1  # Increment dataset index for this label
+            print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 12 seconds.")
+            break
+        else:
+            print("Invalid input. Please enter a valid label index or 'q' to quit.")
 
 # Main function to start data collection
 def main():
@@ -111,31 +133,23 @@ def main():
     
     print("Press 'Enter' to start data collection for each label and 'q' to quit.")
     while True:
-        user_input = input("Enter the label index to start collecting data (or 'q' to quit): ")
+        new_label_input()  # Prompt for initial label input
         
-        if user_input.lower() == 'q':
-            print("Exiting data collection...")
+        if current_label is None:
             break
-
-        if user_input.isdigit() and int(user_input) in label_mapping:
-            current_label = int(user_input)
-            dataset_index[current_label] = 0  # Initialize dataset index for this label
-            print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 240 points.")
-            
-            while len(gyro_x) < 240:
-                pass  # Wait until 240 points are collected
-            
-            print(f"Data collection ended for label: {label_mapping[current_label]}")
-            print(f"Data collected: {len(gyro_x)} points")
-            # Save collected data
-            save_to_file(gyro_x, gyro_y, gyro_z, current_label)
-            # Reset data lists for the next collection
-            gyro_x.clear()
-            gyro_y.clear()
-            gyro_z.clear()
-
-        else:
-            print("Invalid input. Please enter a valid label index or 'q' to quit.")
+        
+        start_time = time.time()  # Start time for 12 seconds collection
+        while time.time() - start_time < 12:
+            pass  # Wait until 12 seconds are reached
+        
+        print(f"Data collection ended for label: {label_mapping[current_label]}")
+        print(f"Data collected: {len(gyro_x)} points")
+        # Save collected data
+        save_to_file(gyro_x, gyro_y, gyro_z, current_label)
+        # Reset data lists for the next collection
+        gyro_x.clear()
+        gyro_y.clear()
+        gyro_z.clear()
 
 if __name__ == "__main__":
     # Setup MQTT client
