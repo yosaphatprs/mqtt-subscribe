@@ -35,17 +35,13 @@ label_mapping = {
 # Function to save data to a file
 def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
     upsampled_data = []
-    gyro_x_upsampled = upsample_data(gyro_x)
-    gyro_y_upsampled = upsample_data(gyro_y)
-    gyro_z_upsampled = upsample_data(gyro_z)
-
-    # Ensure all upsampled arrays are of the same length
-    min_len = min(len(gyro_x_upsampled), len(gyro_y_upsampled), len(gyro_z_upsampled))
-    gyro_x_upsampled = gyro_x_upsampled[:min_len]
-    gyro_y_upsampled = gyro_y_upsampled[:min_len]
-    gyro_z_upsampled = gyro_z_upsampled[:min_len]
-
-    for i in range(min_len):
+    
+    # Upsample collected data to 100 data points
+    gyro_x_upsampled = upsample_data(gyro_x, target_length=100)
+    gyro_y_upsampled = upsample_data(gyro_y, target_length=100)
+    gyro_z_upsampled = upsample_data(gyro_z, target_length=100)
+    
+    for i in range(len(gyro_x_upsampled)):
         data_point = {
             'gyX': gyro_x_upsampled[i],
             'gyY': gyro_y_upsampled[i],
@@ -73,7 +69,7 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
         logging.error(f"Failed to save data to file: {e}")
 
 # Function to upsample data
-def upsample_data(data, target_length=1200):
+def upsample_data(data, target_length=100):
     x = np.linspace(0, 1, len(data))
     f = interp1d(x, data, kind='linear')
     x_new = np.linspace(0, 1, target_length)
@@ -97,6 +93,7 @@ def on_message(client, userdata, msg):
 
             # Log the data counter for debugging
             logging.info(f"Data counter: {data_counter}")
+            
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
     except Exception as e:
@@ -104,7 +101,7 @@ def on_message(client, userdata, msg):
 
 # Main function to start data collection
 def main():
-    global current_label, dataset_count, gyro_x, gyro_y, gyro_z
+    global current_label, dataset_count
     print("Press 'Enter' to start data collection for each label and 's' to stop.")
     while True:
         user_input = input("Enter the label index to start collecting data (or 'q' to quit): ")
@@ -121,10 +118,13 @@ def main():
                 stop_input = input("Press 's' to stop collection: ")
                 if stop_input.lower() == 's':
                     print(f"Data collection ended for label: {label_mapping[current_label]}")
-                    save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
-                    # Reset the lists after saving
-                    gyro_x, gyro_y, gyro_z = [], [], []
-                    dataset_count += 1  # Increment dataset count
+                    
+                    # Check if there's remaining data to upsample and save
+                    if len(gyro_x) > 0:
+                        save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
+                        gyro_x, gyro_y, gyro_z = [], [], []  # Reset lists
+                        dataset_count += 1  # Increment dataset count
+                    
                     break
         else:
             print("Invalid input. Please enter a valid label index or 'q' to quit.")
