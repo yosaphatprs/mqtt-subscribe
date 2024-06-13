@@ -30,22 +30,34 @@ label_mapping = {
 }
 
 # Function to save data to a file
+# Function to save data to a new file each time
 def save_to_file(gyro_x, gyro_y, gyro_z, label):
     global dataset_index
-    filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index[label]}.json")
+    filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{int(time.time())}.json")
     try:
-        data = {
-            'gyro_x': gyro_x,
-            'gyro_y': gyro_y,
-            'gyro_z': gyro_z,
-            'label': label
-        }
+        data = []
+        for i in range(len(gyro_x)):
+            data_point = {
+                'ID': str(i + 1),  # Using index as ID
+                'gyX': gyro_x[i],
+                'gyY': gyro_y[i],
+                'gyZ': gyro_z[i],
+                'label': label
+            }
+            data.append(data_point)
+        
         with open(filename, 'w') as f:
             json.dump(data, f, indent=4)
-        num_records = len(gyro_x)
+        
+        num_records = len(data)
         print(f"Data saved to {filename} with {num_records} records")
         logging.info(f"Data saved to {filename} with {num_records} records")
         
+        # Reset data counters after saving
+        gyro_x.clear()
+        gyro_y.clear()
+        gyro_z.clear()
+
         # Increment dataset index for this label
         dataset_index[label] += 1
         
@@ -66,7 +78,14 @@ def on_message(client, userdata, msg):
     logging.info(f"Message received on topic {msg.topic}")
     try:
         data = json.loads(msg.payload.decode('utf-8'))
-        if 'gyX' in data and 'gyY' in data and 'gyZ' in data:
+        if 'gyX' in data and 'gyY' in data and 'gyZ' in data and 'temp' in data:
+            data_point = {
+                'ID': str(len(gyro_x) + 1),  # Generate a unique ID for each data point
+                'gyX': data['gyX'],
+                'gyY': data['gyY'],
+                'gyZ': data['gyZ'],
+                'temp': data['temp']
+            }
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
