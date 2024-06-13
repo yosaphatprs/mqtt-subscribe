@@ -1,4 +1,4 @@
-import json
+import struct
 import logging
 import os
 import time
@@ -83,12 +83,16 @@ def on_message(client, userdata, msg):
     
     logging.info(f"Message received on topic {msg.topic}")
     try:
-        data = json.loads(msg.payload.decode('utf-8'))
-        if 'gyX' in data and 'gyY' in data and 'gyZ' in data and 'ID' in data:
-            gyro_x.append(data['gyX'])
-            gyro_y.append(data['gyY'])
-            gyro_z.append(data['gyZ'])
-            ids.append(data['ID'])  # Collect the ID from the MQTT message
+        # Unpack the binary data
+        payload = msg.payload
+        if len(payload) == 13:
+            device_id = chr(payload[0])
+            gyX, gyY, gyZ = struct.unpack('fff', payload[1:])
+            
+            gyro_x.append(gyX)
+            gyro_y.append(gyY)
+            gyro_z.append(gyZ)
+            ids.append(device_id)  # Collect the ID from the MQTT message
             
             # Check if time limit (12 seconds) is reached
             if time.time() - start_time >= 12:
@@ -99,8 +103,8 @@ def on_message(client, userdata, msg):
                 # Reset current_label to indicate data collection has stopped
                 current_label = None
 
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to decode JSON: {e}")
+    except struct.error as e:
+        logging.error(f"Failed to unpack binary data: {e}")
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
 
