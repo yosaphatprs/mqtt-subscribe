@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime
+import struct
 
 # Setup logging
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
