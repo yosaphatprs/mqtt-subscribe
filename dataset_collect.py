@@ -13,13 +13,11 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
 DATASET_DIR = "datasets"
 os.makedirs(DATASET_DIR, exist_ok=True)
 
-# Global variables to hold collected data and counter
+# Global variables to hold collected data and counters
 gyro_x = []
 gyro_y = []
 gyro_z = []
 current_label = None
-dataset_count = 0
-data_counter = 0  # Counter for collected data points
 dataset_index = {}  # Dictionary to store dataset index for each label
 
 # Label mapping
@@ -44,16 +42,9 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label):
         }
         with open(filename, 'w') as f:
             json.dump(data, f, indent=4)
-        num_records = len(gyro_x)  # Assuming gyro_x, gyro_y, and gyro_z have the same length
+        num_records = len(gyro_x)
         print(f"Data saved to {filename} with {num_records} records")
         logging.info(f"Data saved to {filename} with {num_records} records")
-        
-        # Print data counter after saving
-        print(f"Data counter: {data_counter}")
-        logging.info(f"Data counter: {data_counter}")
-        
-        # Reset data counter after printing/logging
-        data_counter = 0
         
         # Increment dataset index for this label
         dataset_index[label] += 1
@@ -67,7 +58,11 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("fall-detection/sensor/gyro")
 
 def on_message(client, userdata, msg):
-    global gyro_x, gyro_y, gyro_z, data_counter
+    global gyro_x, gyro_y, gyro_z, current_label
+    
+    if current_label is None:
+        return  # No label selected yet, ignore messages
+    
     logging.info(f"Message received on topic {msg.topic}")
     try:
         data = json.loads(msg.payload.decode('utf-8'))
@@ -75,10 +70,7 @@ def on_message(client, userdata, msg):
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
-            data_counter += 1  # Increment data counter
 
-            # Log the data counter for debugging
-            logging.info(f"Data counter: {data_counter}")
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
     except Exception as e:
@@ -86,17 +78,18 @@ def on_message(client, userdata, msg):
 
 # Main function to start data collection
 def main():
-    global current_label, dataset_count, gyro_x, gyro_y, gyro_z, dataset_index
+    global current_label, dataset_index, gyro_x, gyro_y, gyro_z
+    
     print("Press 'Enter' to start data collection for each label and 'q' to quit.")
     while True:
         user_input = input("Enter the label index to start collecting data (or 'q' to quit): ")
+        
         if user_input.lower() == 'q':
             print("Exiting data collection...")
             break
 
         if user_input.isdigit() and int(user_input) in label_mapping:
             current_label = int(user_input)
-            dataset_count = 0
             dataset_index[current_label] = 0  # Initialize dataset index for this label
             print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 12 seconds.")
             
@@ -105,12 +98,11 @@ def main():
                 pass  # Collect data for 12 seconds
             
             print(f"Data collection ended for label: {label_mapping[current_label]}")
-            print(f"Data collected: {data_counter} points")
+            print(f"Data collected: {len(gyro_x)} points")
             # Save collected data
             save_to_file(gyro_x, gyro_y, gyro_z, current_label)
-            # Reset data lists and counters
+            # Reset data lists for the next collection
             gyro_x, gyro_y, gyro_z = [], [], []
-            dataset_count += 1  # Increment dataset count
 
         else:
             print("Invalid input. Please enter a valid label index or 'q' to quit.")
