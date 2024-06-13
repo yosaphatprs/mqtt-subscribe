@@ -1,8 +1,6 @@
-import struct
 import logging
 import os
 import time
-from datetime import datetime
 import json
 import paho.mqtt.client as mqtt
 
@@ -86,6 +84,8 @@ def on_message(client, userdata, msg):
     try:
         # Parse the message payload
         payload = msg.payload.decode('utf-8')  # Convert bytes to string
+        
+        # Split the payload based on comma (assuming the format is consistent)
         parts = payload.split(',')
         
         if len(parts) == 5:  # Assuming 5 parts including device ID and gyro values
