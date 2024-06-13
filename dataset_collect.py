@@ -1,10 +1,9 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime
-from scipy.interpolate import interp1d
 import paho.mqtt.client as mqtt
-import numpy as np
 
 # Setup logging
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
@@ -34,34 +33,17 @@ label_mapping = {
 # Function to save data to a file
 def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
     global data_counter
-    upsampled_data = []
-
-    # Upsample each list (gyro_x, gyro_y, gyro_z)
-    for data_list in [gyro_x, gyro_y, gyro_z]:
-        if len(data_list) >= 20:
-            x = np.linspace(0, 1, len(data_list))
-            f = interp1d(x, data_list, kind='linear')
-            x_new = np.linspace(0, 1, 100)  # Upsample ratio: 100/20 = 5
-            upsampled_data.append(f(x_new).tolist())
-
-    # Transpose the upsampled data to match format (gyro_x, gyro_y, gyro_z)
-    upsampled_data = np.array(upsampled_data).T.tolist()
-
-    # Prepare data points with label
-    for i in range(len(upsampled_data)):
-        data_point = {
-            'gyX': upsampled_data[i][0],
-            'gyY': upsampled_data[i][1],
-            'gyZ': upsampled_data[i][2],
-            'label': label
-        }
-        upsampled_data[i] = data_point
-    
     filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index}.json")
     try:
+        data = {
+            'gyro_x': gyro_x,
+            'gyro_y': gyro_y,
+            'gyro_z': gyro_z,
+            'label': label
+        }
         with open(filename, 'w') as f:
-            json.dump(upsampled_data, f, indent=4)
-        num_records = len(upsampled_data)
+            json.dump(data, f, indent=4)
+        num_records = len(gyro_x)  # Assuming gyro_x, gyro_y, and gyro_z have the same length
         print(f"Data saved to {filename} with {num_records} records")
         logging.info(f"Data saved to {filename} with {num_records} records")
         
@@ -101,7 +83,7 @@ def on_message(client, userdata, msg):
 # Main function to start data collection
 def main():
     global current_label, dataset_count, gyro_x, gyro_y, gyro_z
-    print("Press 'Enter' to start data collection for each label and 's' to stop.")
+    print("Press 'Enter' to start data collection for each label and 'q' to quit.")
     while True:
         user_input = input("Enter the label index to start collecting data (or 'q' to quit): ")
         if user_input.lower() == 'q':
@@ -111,18 +93,20 @@ def main():
         if user_input.isdigit() and int(user_input) in label_mapping:
             current_label = int(user_input)
             dataset_count = 0
-            print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection.")
+            print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 12 seconds.")
             
-            while True:
-                stop_input = input("Press 's' to stop collection: ")
-                if stop_input.lower() == 's':
-                    print(f"Data collection ended for label: {label_mapping[current_label]}")
-                    # Save and upsample collected data
-                    save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
-                    # Reset the lists after saving
-                    gyro_x, gyro_y, gyro_z = [], [], []
-                    dataset_count += 1  # Increment dataset count
-                    break
+            start_time = time.time()
+            while time.time() - start_time < 12:
+                pass  # Collect data for 12 seconds
+            
+            print(f"Data collection ended for label: {label_mapping[current_label]}")
+            print(f"Data collected: {data_counter} points")
+            # Save collected data
+            save_to_file(gyro_x, gyro_y, gyro_z, current_label, dataset_count)
+            # Reset data lists and counters
+            gyro_x, gyro_y, gyro_z = [], [], []
+            dataset_count += 1  # Increment dataset count
+
         else:
             print("Invalid input. Please enter a valid label index or 'q' to quit.")
 
