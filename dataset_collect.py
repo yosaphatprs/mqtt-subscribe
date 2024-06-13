@@ -33,6 +33,7 @@ label_mapping = {
 }
 
 # Function to save data to a file
+# Function to save data to a file
 def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
     global data_counter
     upsampled_data = []
@@ -49,15 +50,15 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
     upsampled_data = np.array(upsampled_data).T.tolist()
 
     # Prepare data points with label
-    for data_point in upsampled_data:
-        data_point_dict = {
-            'gyX': data_point[0],
-            'gyY': data_point[1],
-            'gyZ': data_point[2],
+    for i in range(len(upsampled_data)):
+        data_point = {
+            'gyX': upsampled_data[i][0],
+            'gyY': upsampled_data[i][1],
+            'gyZ': upsampled_data[i][2],
             'label': label
         }
-        upsampled_data.append(data_point_dict)
-
+        upsampled_data[i] = data_point
+    
     filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index}.json")
     try:
         with open(filename, 'w') as f:
