@@ -20,6 +20,7 @@ gyro_z = []
 ids = []  # List to hold IDs
 current_label = None
 dataset_index = {}  # Dictionary to store dataset index for each label
+start_time = None  # Variable to hold start time for collection
 
 # Label mapping
 label_mapping = {
@@ -95,8 +96,8 @@ def on_message(client, userdata, msg):
                 # Save collected data
                 save_to_file(gyro_x, gyro_y, gyro_z, ids, current_label)
                 
-                # Prompt for new label input
-                new_label_input()
+                # Reset current_label to indicate data collection has stopped
+                current_label = None
 
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
@@ -135,19 +136,8 @@ def main():
         if current_label is None:
             break
         
-        while time.time() - start_time < 12:
-            pass  # Wait until 12 seconds are reached
-        
-        if current_label is not None:
-            print(f"Data collection ended for label: {label_mapping[current_label]}")
-            print(f"Data collected: {len(gyro_x)} points")
-            # Save collected data
-            save_to_file(gyro_x, gyro_y, gyro_z, ids, current_label)
-            # Reset data lists for the next collection
-            gyro_x.clear()
-            gyro_y.clear()
-            gyro_z.clear()
-            ids.clear()
+        while current_label is not None:
+            time.sleep(0.1)  # Sleep to reduce CPU usage and allow for message handling
 
 if __name__ == "__main__":
     # Setup MQTT client
