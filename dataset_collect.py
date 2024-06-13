@@ -73,7 +73,8 @@ def on_message(client, userdata, msg):
     global gyro_x, gyro_y, gyro_z, current_label
     
     if current_label is None:
-        return  # No label selected yet, ignore messages
+        logging.warning("Received message but no label is selected yet. Ignoring.")
+        return
     
     logging.info(f"Message received on topic {msg.topic}")
     try:
