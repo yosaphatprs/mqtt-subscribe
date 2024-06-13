@@ -3,6 +3,7 @@ import logging
 import os
 import time
 from datetime import datetime
+import json
 import paho.mqtt.client as mqtt
 
 # Setup logging
@@ -31,7 +32,7 @@ label_mapping = {
     4: "(22) Jatuh samping pas coba duduk"
 }
 
-# Function to save data to a file
+# Function to save data to a file in JSON format
 def save_to_file(gyro_x, gyro_y, gyro_z, ids, label):
     global dataset_index
     try:
@@ -40,13 +41,23 @@ def save_to_file(gyro_x, gyro_y, gyro_z, ids, label):
         else:
             dataset_index[label] += 1
         
-        filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index[label]}_{int(time.time())}.csv")
+        filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index[label]}_{int(time.time())}.json")
         
-        with open(filename, 'a') as f:
-            for i in range(len(gyro_x)):
-                f.write(f"{ids[i]},{gyro_x[i]:.6f},{gyro_y[i]:.6f},{gyro_z[i]:.6f}\n")
+        data = []
+        for i in range(len(gyro_x)):
+            data_point = {
+                'ID': ids[i],
+                'gyX': gyro_x[i],
+                'gyY': gyro_y[i],
+                'gyZ': gyro_z[i],
+                'label': label
+            }
+            data.append(data_point)
         
-        num_records = len(gyro_x)
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=4)
+        
+        num_records = len(data)
         print(f"Data saved to {filename} with {num_records} records")
         logging.info(f"Data saved to {filename} with {num_records} records")
         
@@ -73,11 +84,15 @@ def on_message(client, userdata, msg):
     
     logging.info(f"Message received on topic {msg.topic}")
     try:
-        # Unpack the binary data
-        payload = msg.payload
-        if len(payload) == 13:
-            device_id = chr(payload[0])
-            gyX, gyY, gyZ = struct.unpack('fff', payload[1:])
+        # Parse the message payload
+        payload = msg.payload.decode('utf-8')  # Convert bytes to string
+        parts = payload.split(',')
+        
+        if len(parts) == 4:
+            device_id = parts[0]
+            gyX = float(parts[1])
+            gyY = float(parts[2])
+            gyZ = float(parts[3])
             
             gyro_x.append(gyX)
             gyro_y.append(gyY)
@@ -93,8 +108,8 @@ def on_message(client, userdata, msg):
                 # Reset current_label to indicate data collection has stopped
                 current_label = None
 
-    except struct.error as e:
-        logging.error(f"Failed to unpack binary data: {e}")
+    except ValueError as ve:
+        logging.error(f"Failed to parse message payload: {ve}")
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
 
