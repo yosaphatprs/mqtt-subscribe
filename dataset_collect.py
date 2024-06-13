@@ -15,12 +15,13 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
 DATASET_DIR = "datasets"
 os.makedirs(DATASET_DIR, exist_ok=True)
 
-# Global variables to hold collected data
+# Global variables to hold collected data and counter
 gyro_x = []
 gyro_y = []
 gyro_z = []
 current_label = None
 dataset_count = 0
+data_counter = 0  # Counter for collected data points
 
 # Label mapping
 label_mapping = {
@@ -38,7 +39,13 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
     gyro_y_upsampled = upsample_data(gyro_y)
     gyro_z_upsampled = upsample_data(gyro_z)
 
-    for i in range(len(gyro_x_upsampled)):
+    # Ensure all upsampled arrays are of the same length
+    min_len = min(len(gyro_x_upsampled), len(gyro_y_upsampled), len(gyro_z_upsampled))
+    gyro_x_upsampled = gyro_x_upsampled[:min_len]
+    gyro_y_upsampled = gyro_y_upsampled[:min_len]
+    gyro_z_upsampled = gyro_z_upsampled[:min_len]
+
+    for i in range(min_len):
         data_point = {
             'gyX': gyro_x_upsampled[i],
             'gyY': gyro_y_upsampled[i],
@@ -53,14 +60,23 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
             json.dump(upsampled_data, f, indent=4)
         print(f"Data saved to {filename} with {len(upsampled_data)} records")
         logging.info(f"Data saved to {filename} with {len(upsampled_data)} records")
+        
+        # Print data counter after saving
+        global data_counter
+        print(f"Data counter: {data_counter}")
+        logging.info(f"Data counter: {data_counter}")
+        
+        # Reset data counter after printing/logging
+        data_counter = 0
+        
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
 
 # Function to upsample data
-def upsample_data(data, target_rate=100, original_rate=20):
-    x = np.arange(0, len(data))
+def upsample_data(data, target_length=1200):
+    x = np.linspace(0, 1, len(data))
     f = interp1d(x, data, kind='linear')
-    x_new = np.linspace(0, len(data) - 1, int(len(data) * (target_rate / original_rate)))
+    x_new = np.linspace(0, 1, target_length)
     return f(x_new).tolist()
 
 # MQTT callback functions
@@ -69,7 +85,7 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("fall-detection/sensor/gyro")
 
 def on_message(client, userdata, msg):
-    global gyro_x, gyro_y, gyro_z
+    global gyro_x, gyro_y, gyro_z, data_counter
     logging.info(f"Message received on topic {msg.topic}")
     try:
         data = json.loads(msg.payload.decode('utf-8'))
@@ -77,6 +93,10 @@ def on_message(client, userdata, msg):
             gyro_x.append(data['gyX'])
             gyro_y.append(data['gyY'])
             gyro_z.append(data['gyZ'])
+            data_counter += 1  # Increment data counter
+
+            # Log the data counter for debugging
+            logging.info(f"Data counter: {data_counter}")
     except json.JSONDecodeError as e:
         logging.error(f"Failed to decode JSON: {e}")
     except Exception as e:
