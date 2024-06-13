@@ -11,7 +11,7 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(message)s')
 
 # Load the pre-trained model
-model = load_model('allnewfall-detect-model.h5')
+model = load_model('new_model.h5')
 
 # Define the interval for predictions (in seconds)
 PREDICTION_INTERVAL = 1
