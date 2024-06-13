@@ -4,6 +4,7 @@ import os
 import time
 from datetime import datetime
 import paho.mqtt.client as mqtt
+import json
 
 # Setup logging
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
@@ -34,8 +35,14 @@ label_mapping = {
 # Function to save data to a file
 def save_to_file(gyro_x, gyro_y, gyro_z, ids, label):
     global dataset_index
-    filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{int(time.time())}.json")
     try:
+        if label not in dataset_index:
+            dataset_index[label] = 0
+        else:
+            dataset_index[label] += 1
+        
+        filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index[label]}_{int(time.time())}.json")
+        
         data = []
         for i in range(len(gyro_x)):
             data_point = {
@@ -63,9 +70,6 @@ def save_to_file(gyro_x, gyro_y, gyro_z, ids, label):
         gyro_z.clear()
         ids.clear()
 
-        # Increment dataset index for this label
-        dataset_index[label] += 1
-        
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
 
@@ -121,7 +125,6 @@ def new_label_input():
 
         if user_input.isdigit() and int(user_input) in label_mapping:
             current_label = int(user_input)
-            dataset_index[current_label] = dataset_index.get(current_label, 0) + 1  # Increment dataset index for this label
             print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 12 seconds.")
             
             start_time = time.time()  # Start time for 12 seconds collection
