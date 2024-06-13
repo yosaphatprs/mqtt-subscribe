@@ -51,7 +51,7 @@ def make_prediction(data):
 
     # Reshape data for model prediction
     input_data = np.array([gyro_x, gyro_y, gyro_z])
-    input_data = input_data.reshape((1, 3, 25, 1))  # Reshape to (1, 3, 25, 1)
+    input_data = input_data.reshape((1, 3, 120, 1))  # Reshape to (1, 3, 25, 1)
 
     # Make prediction
     prediction = model.predict(input_data)

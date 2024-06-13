@@ -1,31 +1,28 @@
 import os
 from google.cloud import storage
 
-def upload_to_gcs(local_directory, bucket_name):
-    # Initialize Google Cloud Storage client
-    client = storage.Client()
+# Path to your JSON key file
+JSON_KEY_PATH = '/path/to/your/json/key.json'
 
-    try:
-        # Get bucket object
-        bucket = client.get_bucket(bucket_name)
+# Initialize a client using JSON key for authentication
+client = storage.Client.from_service_account_json(JSON_KEY_PATH)
 
-        # List local files to upload
-        files_to_upload = [f for f in os.listdir(local_directory) if os.path.isfile(os.path.join(local_directory, f))]
+def upload_to_gcs(bucket_name, source_folder):
+    bucket = client.get_bucket(bucket_name)
 
-        for file_name in files_to_upload:
-            local_file_path = os.path.join(local_directory, file_name)
-            blob = bucket.blob(file_name)  # Create a new blob in the bucket
-            blob.upload_from_filename(local_file_path)  # Upload the file
+    for root, _, files in os.walk(source_folder):
+        for file_name in files:
+            local_file_path = os.path.join(root, file_name)
+            blob_name = os.path.relpath(local_file_path, source_folder)
+            
+            # Upload file with JSON metadata
+            blob = bucket.blob(blob_name)
+            blob.upload_from_filename(local_file_path, content_type='application/json')
 
-            print(f"File {file_name} uploaded to {bucket_name}")
+            print(f"File {file_name} uploaded to {bucket_name} as {blob_name}")
 
-    except Exception as e:
-        print(f"Error: {e}")
-
-# Example usage
 if __name__ == "__main__":
-    local_directory = "/home/ecvxevv/fall-detection/mqtt-subscribe/datasets"  # Local directory path containing files to upload
-    bucket_name = "group3-falldetection"              # Name of your Google Cloud Storage bucket
+    source_folder = "/home/ecvxevv/fall-detection/mqtt-subscribe/datasets"  # Local directory path containing files to upload
+    bucket_name = "group3-falldetection"    
 
-    # Upload files to Google Cloud Storage bucket
-    upload_to_gcs(local_directory, bucket_name)
+    upload_to_gcs(bucket_name, source_folder)
