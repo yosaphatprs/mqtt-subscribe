@@ -30,7 +30,6 @@ label_mapping = {
 }
 
 # Function to save data to a file
-# Function to save data to a new file each time
 def save_to_file(gyro_x, gyro_y, gyro_z, label):
     global dataset_index
     filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{int(time.time())}.json")
@@ -111,11 +110,11 @@ def main():
         if user_input.isdigit() and int(user_input) in label_mapping:
             current_label = int(user_input)
             dataset_index[current_label] = 0  # Initialize dataset index for this label
-            print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 12 seconds.")
+            print(f"Collecting data for label: {label_mapping[current_label]}. Press 's' to stop collection after 240 points.")
             
-            start_time = time.time()
-            while time.time() - start_time < 12:
-                pass  # Collect data for 12 seconds
+            data_counter = 0
+            while data_counter < 240:
+                pass  # Collect data until 240 points are collected
             
             print(f"Data collection ended for label: {label_mapping[current_label]}")
             print(f"Data collected: {len(gyro_x)} points")
