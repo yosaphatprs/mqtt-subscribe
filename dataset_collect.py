@@ -4,7 +4,6 @@ import os
 import time
 from datetime import datetime
 import paho.mqtt.client as mqtt
-import json
 
 # Setup logging
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
@@ -41,30 +40,17 @@ def save_to_file(gyro_x, gyro_y, gyro_z, ids, label):
         else:
             dataset_index[label] += 1
         
-        filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index[label]}_{int(time.time())}.json")
+        filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index[label]}_{int(time.time())}.csv")
         
-        data = []
-        for i in range(len(gyro_x)):
-            data_point = {
-                'ID': ids[i],  # Use the ID from the MQTT message
-                'gyX': gyro_x[i],
-                'gyY': gyro_y[i],
-                'gyZ': gyro_z[i],
-                'label': label
-            }
-            data.append(data_point)
+        with open(filename, 'a') as f:
+            for i in range(len(gyro_x)):
+                f.write(f"{ids[i]},{gyro_x[i]:.6f},{gyro_y[i]:.6f},{gyro_z[i]:.6f}\n")
         
-        with open(filename, 'w') as f:
-            json.dump(data, f, indent=4)
-        
-        num_records = len(data)
+        num_records = len(gyro_x)
         print(f"Data saved to {filename} with {num_records} records")
         logging.info(f"Data saved to {filename} with {num_records} records")
         
-        # Clear the 'data' variable after saving to file
-        data.clear()
-
-        # Reset data counters after saving
+        # Clear the lists after saving to file
         gyro_x.clear()
         gyro_y.clear()
         gyro_z.clear()
