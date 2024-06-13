@@ -30,6 +30,7 @@ label_mapping = {
 }
 
 # Function to save data to a file
+# Function to save data to a file
 def save_to_file(gyro_x, gyro_y, gyro_z, label):
     global dataset_index
     filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{int(time.time())}.json")
@@ -52,6 +53,9 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label):
         print(f"Data saved to {filename} with {num_records} records")
         logging.info(f"Data saved to {filename} with {num_records} records")
         
+        # Clear the 'data' variable after saving to file
+        data.clear()
+
         # Reset data counters after saving
         gyro_x.clear()
         gyro_y.clear()
