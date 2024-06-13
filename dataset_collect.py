@@ -34,35 +34,39 @@ label_mapping = {
 
 # Function to save data to a file
 def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
+    global data_counter
     upsampled_data = []
-    gyro_x_upsampled = upsample_data(gyro_x)
-    gyro_y_upsampled = upsample_data(gyro_y)
-    gyro_z_upsampled = upsample_data(gyro_z)
 
-    # Ensure all upsampled arrays are of the same length
-    min_len = min(len(gyro_x_upsampled), len(gyro_y_upsampled), len(gyro_z_upsampled))
-    gyro_x_upsampled = gyro_x_upsampled[:min_len]
-    gyro_y_upsampled = gyro_y_upsampled[:min_len]
-    gyro_z_upsampled = gyro_z_upsampled[:min_len]
+    # Upsample each list (gyro_x, gyro_y, gyro_z) with custom ratio
+    for data_list in [gyro_x, gyro_y, gyro_z]:
+        if len(data_list) >= 20:
+            x = np.linspace(0, 1, len(data_list))
+            f = interp1d(x, data_list, kind='linear')
+            x_new = np.linspace(0, 1, 100)  # Upsample ratio: 100/20 = 5
+            upsampled_data.append(f(x_new).tolist())
 
-    for i in range(min_len):
-        data_point = {
-            'gyX': gyro_x_upsampled[i],
-            'gyY': gyro_y_upsampled[i],
-            'gyZ': gyro_z_upsampled[i],
+    # Transpose the upsampled data to match format (gyro_x, gyro_y, gyro_z)
+    upsampled_data = np.array(upsampled_data).T.tolist()
+
+    # Prepare data points with label
+    for data_point in upsampled_data:
+        data_point_dict = {
+            'gyX': data_point[0],
+            'gyY': data_point[1],
+            'gyZ': data_point[2],
             'label': label
         }
-        upsampled_data.append(data_point)
-    
+        upsampled_data.append(data_point_dict)
+
     filename = os.path.join(DATASET_DIR, f"dataset_label_{label}_{dataset_index}.json")
     try:
         with open(filename, 'w') as f:
             json.dump(upsampled_data, f, indent=4)
-        print(f"Data saved to {filename} with {len(upsampled_data)} records")
-        logging.info(f"Data saved to {filename} with {len(upsampled_data)} records")
+        num_records = len(upsampled_data)
+        print(f"Data saved to {filename} with {num_records} records")
+        logging.info(f"Data saved to {filename} with {num_records} records")
         
         # Print data counter after saving
-        global data_counter
         print(f"Data counter: {data_counter}")
         logging.info(f"Data counter: {data_counter}")
         
@@ -71,16 +75,6 @@ def save_to_file(gyro_x, gyro_y, gyro_z, label, dataset_index):
         
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
-
-# Function to upsample data
-def upsample_data(data, target_length=100):
-    if len(data) < 20:
-        return data
-    
-    x = np.linspace(0, 1, len(data))
-    f = interp1d(x, data, kind='linear')
-    x_new = np.linspace(0, 1, target_length)
-    return f(x_new).tolist()
 
 # MQTT callback functions
 def on_connect(client, userdata, flags, rc):
