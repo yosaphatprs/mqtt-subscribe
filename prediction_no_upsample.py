@@ -86,7 +86,14 @@ def make_prediction(data):
 
 def send_mqtt_notification(label):
     try:
-        mqtt_client.publish(MQTT_TOPIC, label)
+        msg = ""
+        if label is 2:
+            msg = "Jatuh Depan Coba Duduk"
+        elif label is 3:
+            msg = "Jatuh Belakang Coba Duduk"
+        elif label is 4:
+            msg = "Jatuh Samping Pas Coba Duduk"
+        mqtt_client.publish(MQTT_TOPIC, msg)
         logging.info(f"Sent MQTT notification: {label}")
     except Exception as e:
         logging.error(f"Failed to send MQTT notification: {e}")
