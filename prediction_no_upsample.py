@@ -87,7 +87,14 @@ def process_json_data():
 
             # If predicted class index is 2, 3, or 4, publish to MQTT and save to database
             if predicted_class_index in [2, 3, 4]:
-                mqtt_client.publish(MQTT_TOPIC, predicted_label)
+                msg = ""
+                if predicted_class_index == 2:
+                    msg = "Jatuh Depan Coba Duduk"
+                elif predicted_class_index == 3:
+                    msg = "Jatuh Belakang Coba Duduk"
+                elif predicted_class_index == 4:
+                    msg = "Jatuh Samping Pas Coba Duduk"
+                mqtt_client.publish(MQTT_TOPIC, msg)
                 save_falling_event(predicted_label)
     except Exception as e:
         logging.error(f"Error processing JSON data: {e}")
