@@ -5,16 +5,37 @@ import os
 import time
 from threading import Timer
 from tensorflow.keras.models import load_model
+import paho.mqtt.client as mqtt
 
 # Setup logging
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
                     format='%(asctime)s %(levelname)s %(message)s')
 
 # Load the pre-trained model
-model = load_model('model.h5')
+model = load_model('new_model.h5')
 
 # Define the interval for predictions (in seconds)
-PREDICTION_INTERVAL = 1
+PREDICTION_INTERVAL = 0.5
+
+# Label mapping
+label_mapping = {
+    0: "(1) Berdiri 30 Detik",
+    1: "(06) Jalan Mutar 4m",
+    2: "(20) Jatuh Depan Coba Duduk",
+    3: "(21) Jatuh belakang coba duduk",
+    4: "(22) Jatuh samping pas coba duduk"
+}
+
+# MQTT settings
+MQTT_BROKER = "34.101.195.105"
+MQTT_PORT = 1883
+MQTT_TOPIC = "teddy_belt/notifications"
+
+# Create an MQTT client instance
+mqtt_client = mqtt.Client()
+
+# Connect to the MQTT broker
+mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
 
 # Function to process the JSON data and make predictions
 def process_json_data():
@@ -22,11 +43,15 @@ def process_json_data():
         with open('gyro_data.json', 'r') as f:
             data = json.load(f)
 
-        if len(data) >= 25:  # Ensure we have at least 25 data points
-            logging.info("Data has at least 25 points. Making prediction.")
-            latest_data = data[-25:]  # Get the last 25 data points
-            prediction = make_prediction(latest_data)
-            logging.info(f"Prediction: {prediction}")
+        if len(data) >= 120:  # Ensure we have at least 120 data points
+            logging.info("Data has at least 120 points. Making prediction.")
+            latest_data = data[-120:]  # Get the last 120 data points
+            prediction, predicted_label, predicted_class_index = make_prediction(latest_data)
+            logging.info(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
+            print(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
+            
+            if predicted_class_index in [2, 3, 4]:
+                send_mqtt_notification(predicted_label)
     except Exception as e:
         logging.error(f"Error processing JSON data: {e}")
 
@@ -40,12 +65,22 @@ def make_prediction(data):
     gyro_z = [point['gyZ'] for point in data]
 
     # Reshape data for model prediction
-    input_data = np.array([gyro_x, gyro_y, gyro_z]).T
-    input_data = input_data.reshape(1, input_data.shape[0], input_data.shape[1])
+    input_data = np.array([gyro_x, gyro_y, gyro_z])
+    input_data = input_data.reshape((1, 3, 120, 1))  # Reshape to (1, 3, 120, 1)
 
     # Make prediction
     prediction = model.predict(input_data)
-    return prediction
+    predicted_class_index = np.argmax(prediction, axis=1)[0]
+    predicted_label = label_mapping[predicted_class_index]
+    
+    return prediction, predicted_label, predicted_class_index
+
+def send_mqtt_notification(label):
+    try:
+        mqtt_client.publish(MQTT_TOPIC, label)
+        logging.info(f"Sent MQTT notification: {label}")
+    except Exception as e:
+        logging.error(f"Failed to send MQTT notification: {e}")
 
 # Start the first prediction
 Timer(PREDICTION_INTERVAL, process_json_data).start()
@@ -53,6 +88,7 @@ Timer(PREDICTION_INTERVAL, process_json_data).start()
 # Keep the script running
 try:
     while True:
-        time.sleep(1)
+        time.sleep(0.5)
 except KeyboardInterrupt:
     logging.info("Script terminated by user.")
+    mqtt_client.disconnect()

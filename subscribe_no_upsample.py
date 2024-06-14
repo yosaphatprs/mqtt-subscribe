@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime
+import struct
 
 # Setup logging
 logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG, 
@@ -36,16 +37,26 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     logging.info(f"Message received on topic {msg.topic}")
     try:
-        # Parse the JSON data
-        data = json.loads(msg.payload.decode('utf-8'))
-        
-        # Ensure data is a dictionary (JSON object)
-        if isinstance(data, dict):
-            # Print the received data
-            print(json.dumps(data, indent=4))
+        # Unpack the binary data
+        payload = msg.payload
+        if len(payload) == 13:
+            device_id = chr(payload[0])
+            gyX, gyY, gyZ = struct.unpack('fff', payload[1:])
+            
+            # Prepare the data point as a dictionary
+            data_point = {
+                'ID': device_id,
+                'gyX': gyX,
+                'gyY': gyY,
+                'gyZ': gyZ,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # Print the received data (optional)
+            print(json.dumps(data_point, indent=4))
             
             # Add the new data point to the list
-            data_list.append(data)
+            data_list.append(data_point)
             
             # Ensure the list does not exceed MAX_DATA_POINTS
             if len(data_list) > MAX_DATA_POINTS:
@@ -54,9 +65,9 @@ def on_message(client, userdata, msg):
             # Save the updated data list to the JSON file
             save_to_file(data_list)
         else:
-            logging.error("Received data is not a JSON object")
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to decode JSON: {e}")
+            logging.error("Received payload has unexpected length")
+    except struct.error as e:
+        logging.error(f"Failed to unpack binary data: {e}")
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
 
@@ -68,6 +79,7 @@ def save_to_file(data):
         logging.info(f"Data saved to {SAVE_FILE} with {len(data)} records")
     except Exception as e:
         logging.error(f"Failed to save data to file: {e}")
+        print(f"Failed to save data to file: {e}")
 
 # Create an MQTT client instance
 client = mqtt.Client()
