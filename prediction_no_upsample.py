@@ -15,7 +15,7 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
 model = load_model('new_model.h5')
 
 # Define the interval for predictions (in seconds)
-PREDICTION_INTERVAL = 0.5
+PREDICTION_INTERVAL = 1
 
 # Label mapping
 label_mapping = {
@@ -97,7 +97,7 @@ Timer(PREDICTION_INTERVAL, process_json_data).start()
 # Keep the script running
 try:
     while True:
-        time.sleep(0.5)
+        time.sleep(1)
 except KeyboardInterrupt:
     logging.info("Script terminated by user.")
     mqtt_client.disconnect()
