@@ -3,6 +3,7 @@ import numpy as np
 import logging
 import os
 import time
+import psycopg2
 from threading import Timer
 from tensorflow.keras.models import load_model
 import paho.mqtt.client as mqtt
@@ -15,7 +16,7 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
 model = load_model('new_model.h5')
 
 # Define the interval for predictions (in seconds)
-PREDICTION_INTERVAL = 1
+PREDICTION_INTERVAL = 0.5
 
 # Label mapping
 label_mapping = {
@@ -26,24 +27,50 @@ label_mapping = {
     4: "(22) Jatuh samping pas coba duduk"
 }
 
-# MQTT settings
-MQTT_BROKER = "34.101.195.105"
+# MQTT broker settings for sending prediction messages
+MQTT_BROKER_PREDICTION = "34.101.195.105"
 MQTT_PORT = 1883
 MQTT_TOPIC = "teddy_belt/notifications"
-MQTT_TIMEOUT = 120  # Increased timeout
 
-# Create an MQTT client instance
-mqtt_client = mqtt.Client()
+# PostgreSQL database connection settings
+DB_NAME = "your_database"
+DB_USER = "your_username"
+DB_PASSWORD = "your_password"
+DB_HOST = "localhost"
+DB_PORT = "5432"
 
-def connect_mqtt():
+# Connect to PostgreSQL database
+def connect_db():
     try:
-        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, MQTT_TIMEOUT)
-        logging.info("Connected to MQTT broker")
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT
+        )
+        return conn
     except Exception as e:
-        logging.error(f"Failed to connect to MQTT broker: {e}")
+        logging.error(f"Failed to connect to the database: {e}")
+        return None
 
-# Try to connect to the MQTT broker
-connect_mqtt()
+# Save falling event to the database
+def save_falling_event(label):
+    conn = connect_db()
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO fall_events (label) VALUES (%s)",
+                (label,)
+            )
+            conn.commit()
+            cur.close()
+            logging.info(f"Falling event saved: {label}")
+        except Exception as e:
+            logging.error(f"Failed to save falling event to the database: {e}")
+        finally:
+            conn.close()
 
 # Function to process the JSON data and make predictions
 def process_json_data():
@@ -58,9 +85,10 @@ def process_json_data():
             logging.info(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
             print(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
 
-            # Only attempt to send MQTT notification if connected
-            if mqtt_client.is_connected() and predicted_class_index in [2, 3, 4]:
-                send_mqtt_notification(predicted_label)
+            # If predicted class index is 2, 3, or 4, publish to MQTT and save to database
+            if predicted_class_index in [2, 3, 4]:
+                mqtt_client.publish(MQTT_TOPIC, predicted_label)
+                save_falling_event(predicted_label)
     except Exception as e:
         logging.error(f"Error processing JSON data: {e}")
 
@@ -81,22 +109,25 @@ def make_prediction(data):
     prediction = model.predict(input_data)
     predicted_class_index = np.argmax(prediction, axis=1)[0]
     predicted_label = label_mapping[predicted_class_index]
-    
+
     return prediction, predicted_label, predicted_class_index
 
-def send_mqtt_notification(label):
-    try:
-        msg = ""
-        if label == 2:
-            msg = "Jatuh Depan Coba Duduk"
-        elif label == 3:
-            msg = "Jatuh Belakang Coba Duduk"
-        elif label == 4:
-            msg = "Jatuh Samping Pas Coba Duduk"
-        mqtt_client.publish(MQTT_TOPIC, msg)
-        logging.info(f"Sent MQTT notification: {label}")
-    except Exception as e:
-        logging.error(f"Failed to send MQTT notification: {e}")
+# MQTT setup for publishing messages from prediction
+mqtt_client = mqtt.Client()
+
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        logging.info(f"Connected to MQTT broker at {MQTT_BROKER_PREDICTION}")
+    else:
+        logging.error(f"Failed to connect to MQTT broker, return code {rc}")
+
+mqtt_client.on_connect = on_connect
+
+try:
+    mqtt_client.connect(MQTT_BROKER_PREDICTION, MQTT_PORT, 60)
+    mqtt_client.loop_start()
+except Exception as e:
+    logging.error(f"Failed to connect to MQTT broker: {e}")
 
 # Start the first prediction
 Timer(PREDICTION_INTERVAL, process_json_data).start()
@@ -104,7 +135,8 @@ Timer(PREDICTION_INTERVAL, process_json_data).start()
 # Keep the script running
 try:
     while True:
-        time.sleep(1)
+        time.sleep(0.5)
 except KeyboardInterrupt:
     logging.info("Script terminated by user.")
+    mqtt_client.loop_stop()
     mqtt_client.disconnect()
