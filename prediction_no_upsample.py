@@ -30,12 +30,20 @@ label_mapping = {
 MQTT_BROKER = "34.101.195.105"
 MQTT_PORT = 1883
 MQTT_TOPIC = "teddy_belt/notifications"
+MQTT_TIMEOUT = 120  # Increased timeout
 
 # Create an MQTT client instance
 mqtt_client = mqtt.Client()
 
-# Connect to the MQTT broker
-mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
+def connect_mqtt():
+    try:
+        mqtt_client.connect(MQTT_BROKER, MQTT_PORT, MQTT_TIMEOUT)
+        logging.info("Connected to MQTT broker")
+    except Exception as e:
+        logging.error(f"Failed to connect to MQTT broker: {e}")
+
+# Try to connect to the MQTT broker
+connect_mqtt()
 
 # Function to process the JSON data and make predictions
 def process_json_data():
@@ -49,8 +57,9 @@ def process_json_data():
             prediction, predicted_label, predicted_class_index = make_prediction(latest_data)
             logging.info(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
             print(f"Prediction: {prediction}, Predicted Class: {predicted_label}")
-            
-            if predicted_class_index in [2, 3, 4]:
+
+            # Only attempt to send MQTT notification if connected
+            if mqtt_client.is_connected() and predicted_class_index in [2, 3, 4]:
                 send_mqtt_notification(predicted_label)
     except Exception as e:
         logging.error(f"Error processing JSON data: {e}")
