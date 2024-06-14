@@ -33,9 +33,9 @@ MQTT_PORT = 1883
 MQTT_TOPIC = "teddy_belt/notifications"
 
 # PostgreSQL database connection settings
-DB_NAME = "your_database"
-DB_USER = "your_username"
-DB_PASSWORD = "your_password"
+DB_NAME = "fall_detection"
+DB_USER = "root"
+DB_PASSWORD = ""
 DB_HOST = "localhost"
 DB_PORT = "5432"
 
