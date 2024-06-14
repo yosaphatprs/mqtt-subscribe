@@ -9,7 +9,7 @@ logging.basicConfig(filename='mqtt_client.log', level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(message)s')
 
 # Path to save the JSON file
-SAVE_FILE = "received_data/gyro_data.json"
+SAVE_FILE = "gyro_data.json"
 
 # Ensure the directory exists
 os.makedirs(os.path.dirname(SAVE_FILE), exist_ok=True)
