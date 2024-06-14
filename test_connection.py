@@ -3,7 +3,7 @@ import psycopg2
 # PostgreSQL database connection settings
 DB_NAME = "fall_detection"
 DB_USER = "root"
-DB_PASSWORD = ""
+DB_PASSWORD = "123"
 DB_HOST = "localhost"
 DB_PORT = "5432"
 
