@@ -7,6 +7,8 @@ DB_PASSWORD = ""
 DB_HOST = "localhost"
 DB_PORT = "5432"
 
+conn = None  # Initialize connection variable
+
 try:
     # Establish connection to PostgreSQL
     conn = psycopg2.connect(
