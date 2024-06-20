@@ -52,16 +52,12 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
-    auth = request.authorization
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
 
-    if not auth or not auth.username or not auth.password:
-        return Response(
-            "Could not verify", 401,
-            {'WWW-Authenticate': 'Basic realm="Login required!"'}
-        )
-
-    username = auth.username
-    password = auth.password
+    if not username or not password:
+        return jsonify({"message": "Username and password are required"}), 400
 
     try:
         conn = get_db_connection()
