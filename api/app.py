@@ -82,4 +82,4 @@ def login():
         return jsonify({"message": f"Failed to authenticate user: {e}"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='34.143.200.120')
+    app.run(debug=True, host='0.0.0.0')
