@@ -27,9 +27,10 @@ def register():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
+    email = data.get('email')  # New addition for email
 
-    if not username or not password:
-        return jsonify({"message": "Username and password are required"}), 400
+    if not username or not password or not email:
+        return jsonify({"message": "Username, password, and email are required"}), 400
 
     hashed_password = generate_password_hash(password)
 
@@ -37,8 +38,8 @@ def register():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        insert_query = sql.SQL("INSERT INTO users (username, password) VALUES (%s, %s)")
-        cursor.execute(insert_query, (username, hashed_password))
+        insert_query = sql.SQL("INSERT INTO users (username, password, email) VALUES (%s, %s, %s)")
+        cursor.execute(insert_query, (username, hashed_password, email))
         conn.commit()
 
         cursor.close()
@@ -47,6 +48,7 @@ def register():
         return jsonify({"message": "User registered successfully"}), 201
     except psycopg2.Error as e:
         return jsonify({"message": f"Failed to register user: {e}"}), 500
+
 
 @app.route('/login', methods=['POST'])
 def login():
