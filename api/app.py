@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from psycopg2 import connect, sql
 import psycopg2.extras
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -78,6 +79,34 @@ def login():
             )
     except psycopg2.Error as e:
         return jsonify({"message": f"Failed to authenticate user: {e}"}), 500
+
+@app.route('/fall_events', methods=['GET'])
+def get_fall_events():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+        # Calculate the date one month ago from today
+        one_month_ago = datetime.now() - timedelta(days=30)
+
+        # Query to get fall events from the last month
+        cursor.execute("""
+            SELECT * FROM fall_events 
+            WHERE event_time >= %s
+            ORDER BY event_time
+        """, (one_month_ago,))
+
+        fall_events = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        # Convert the result to a list of dictionaries
+        fall_events_list = [dict(event) for event in fall_events]
+
+        return jsonify(fall_events_list), 200
+    except psycopg2.Error as e:
+        return jsonify({"message": f"Failed to fetch fall events: {e}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
